@@ -1,0 +1,28 @@
+name: Validate Quickstart
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      COMPOSE_PROJECT_NAME: pharma-semantic-layer-ci
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start from a clean database
+        run: sh run.sh up
+      - name: Validate models, authorization and queries
+        run: sh run.sh test
+      - name: Show service logs on failure
+        if: failure()
+        run: docker compose logs --tail 100
+      - name: Remove the disposable environment
+        if: always()
+        run: sh run.sh down

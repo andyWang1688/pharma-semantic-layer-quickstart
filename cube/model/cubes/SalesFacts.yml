@@ -1,0 +1,72 @@
+# 一行是一笔真实销售；主键是交易 ID。相同金额的两笔交易也必须分别计入。
+cubes:
+  - name: SalesFacts
+    sql: SELECT * FROM marts.mart_sales_fact
+    public: false
+
+    # 事实只关联唯一医院、产品维度，不 JOIN 多对多辖区覆盖来复制金额。
+    joins:
+      - name: Hospitals
+        sql: "{CUBE}.hospital_code = {Hospitals.hospital_code}"
+        relationship: many_to_one
+      - name: Products
+        sql: "{CUBE}.product_code = {Products.product_code}"
+        relationship: many_to_one
+
+    measures:
+      # 普通 SUM 即可：去重发生在授权集合，不能使用 SUM(DISTINCT 金额)。
+      - name: total_amount
+        sql: sales_amount
+        type: sum
+        title: 销售额
+      - name: total_quantity
+        sql: sales_quantity
+        type: sum
+        title: 销量
+
+    dimensions:
+      - name: sales_id
+        sql: sales_id
+        type: string
+        primary_key: true
+      - name: sales_date
+        sql: sales_date
+        type: time
+      - name: hospital_code
+        sql: hospital_code
+        type: string
+      - name: product_code
+        sql: product_code
+        type: string
+      - name: month_hospital_product_key
+        # 自定义配对键，与 Python scope_key 格式相同；月份支持逐期历史权限。
+        # 它是过滤维度，不表示业绩分摊；配对键由 dbt 统一计算。
+        sql: month_hospital_product_key
+        type: string
+
+    pre_aggregations:
+      - name: monthlyHospitalProduct
+        # 本例将月度 Rollup 存在 PostgreSQL，减少服务数量；生产另评估 Cube Store。
+        type: rollup
+        external: false
+        scheduled_refresh: true
+        measures:
+          - total_amount
+          - total_quantity
+        # 保留强制过滤键及常用展示维度，查询只选总计时也能安全匹配。
+        # 不含员工、辖区和组织版本；换人/调整辖区仍使用同一份销售聚合。
+        dimensions:
+          - month_hospital_product_key
+          - hospital_code
+          - product_code
+          - Hospitals.hospital_name
+          - Products.product_name
+        time_dimension: sales_date
+        granularity: month
+        # 本例 dbt 全量替换三张表；检查它们的 OID 可以发现同笔交易更正和维度改名。
+        # 轮询只读 PG 目录。若切换增量或原地更新，必须改用发布批次水位。
+        refresh_key:
+          every: 1 minute
+          sql: >-
+            SELECT concat_ws('/', 'marts.mart_sales_fact'::regclass::oid,
+              'marts.mart_hospital_dimension'::regclass::oid, 'marts.mart_product_dimension'::regclass::oid)

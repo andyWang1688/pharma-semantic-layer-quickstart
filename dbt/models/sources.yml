@@ -1,0 +1,92 @@
+version: 2
+sources:
+  - name: raw
+    schema: raw
+    description: "已抽取的合成业务源数据：人员、组织、覆盖关系、销售及主档。应用登录和在线授权独立维护。"
+    tables:
+      - name: positions
+        description: "raw.positions 的字段标准化入口，保持来源粒度。"
+        columns:
+          - name: snapshot_code
+            description: "完整月架构版本，格式 YYYY-MM；同一版本的组织和覆盖关系一起装载。"
+          - name: position_code
+            description: "岗位/辖区编码；编码和架构版本共同标识一份岗位状态。"
+          - name: position_name
+            description: "该版本岗位的展示名称。"
+          - name: parent_code
+            description: "同版本的直接上级岗位编码；根岗位为空。"
+      - name: employee_positions
+        description: "raw.employee_positions 的字段标准化入口，保持来源粒度。"
+        columns:
+          - name: id
+            description: "来源关系记录 ID。"
+          - name: snapshot_code
+            description: "完整月架构版本，格式 YYYY-MM；同一版本的组织和覆盖关系一起装载。"
+          - name: employee_code
+            description: "人员工号，唯一识别人员；姓名相同的人员具有不同工号。"
+          - name: position_code
+            description: "岗位/辖区编码；编码和架构版本共同标识一份岗位状态。"
+      - name: position_account_histories
+        description: "raw.position_account_histories 的字段标准化入口，保持来源粒度。"
+        columns:
+          - name: id
+            description: "来源关系记录 ID。"
+          - name: snapshot_code
+            description: "完整月架构版本，格式 YYYY-MM；同一版本的组织和覆盖关系一起装载。"
+          - name: position_code
+            description: "岗位/辖区编码；编码和架构版本共同标识一份岗位状态。"
+          - name: account_code
+            description: "客户编码；本销售示例只接受医院客户。"
+          - name: account_type
+            description: "客户类型；hospital 表示医院。"
+      - name: position_product_histories
+        description: "raw.position_product_histories 的字段标准化入口，保持来源粒度。"
+        columns:
+          - name: id
+            description: "来源关系记录 ID。"
+          - name: snapshot_code
+            description: "完整月架构版本，格式 YYYY-MM；同一版本的组织和覆盖关系一起装载。"
+          - name: position_code
+            description: "岗位/辖区编码；编码和架构版本共同标识一份岗位状态。"
+          - name: product_code
+            description: "产品主档编码；同一产品可被多个岗位覆盖。"
+      - name: employees
+        description: "raw.employees 的字段标准化入口，保持来源粒度。"
+        columns:
+          - name: employee_code
+            description: "人员工号，唯一识别人员；姓名相同的人员具有不同工号。"
+          - name: employee_name
+            description: "人员展示姓名，允许重名。"
+          - name: role_kind
+            description: "示例人员类型；manager 用于识别父岗位上的直接经理。"
+      - name: sales
+        description: "raw.sales 的字段标准化入口，保持来源粒度。"
+        columns:
+          - name: sales_id
+            description: "真实销售交易唯一 ID；金额相同的不同交易分别保留。"
+          - name: sales_date
+            description: "销售交易发生日期；staging 统一转换为 timestamp。"
+          - name: hospital_code
+            description: "医院主档编码；同一医院可被多个岗位覆盖。"
+          - name: product_code
+            description: "产品主档编码；同一产品可被多个岗位覆盖。"
+          - name: sales_amount
+            description: "该笔交易的合成销售金额；跨岗位共享可见时仍只保存一份。"
+          - name: sales_quantity
+            description: "该笔交易的合成销售数量。"
+      - name: hospitals
+        description: "raw.hospitals 的字段标准化入口，保持来源粒度。"
+        columns:
+          - name: hospital_code
+            description: "医院主档编码；同一医院可被多个岗位覆盖。"
+          - name: hospital_name
+            description: "医院展示名称。"
+          - name: province_name
+            description: "医院主档的省级地区名称，独立于销售辖区。"
+      - name: products
+        description: "raw.products 的字段标准化入口，保持来源粒度。"
+        columns:
+          - name: product_code
+            description: "产品主档编码；同一产品可被多个岗位覆盖。"
+          - name: product_name
+            description: "产品展示名称。"

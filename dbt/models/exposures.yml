@@ -1,0 +1,32 @@
+version: 2
+
+# 记录 Cube 的实际消费出口；权限关系也是公开血缘的一部分。
+exposures:
+  - name: cube_sales
+    label: Cube Sales View
+    type: application
+    maturity: medium
+    description: >-
+      医药销售星型模型的语义入口和月度 Rollup，关联医院、产品维度。
+      授权过滤保持销售月份与 H+P 配对；
+      同一事实通过多个岗位可见时仍只累计一次。
+    depends_on:
+      - ref('mart_sales_fact')
+      - ref('mart_hospital_dimension')
+      - ref('mart_product_dimension')
+    owner:
+      name: Example maintainers
+
+  - name: cube_organization_and_authorization
+    label: Cube Organization View and Python policy
+    type: application
+    maturity: medium
+    description: >-
+      Organization 发布同版岗位树和人员任职。Python query_rewrite 结合这些关系、
+      岗位 H+P 与 app 当前授权，校验查询对象并强制过滤。app 表不作为 dbt source。
+    depends_on:
+      - ref('mart_employee_positions')
+      - ref('mart_position_tree')
+      - ref('mart_position_hp')
+    owner:
+      name: Example maintainers

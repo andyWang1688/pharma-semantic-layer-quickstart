@@ -1,0 +1,14 @@
+docs
+tests
+demo/static
+__pycache__
+*.pyc
+.env
+.git
+.idea
+.DS_Store
+.venv
+.ruff_cache
+dbt/target
+dbt/logs
+dbt/dbt_packages

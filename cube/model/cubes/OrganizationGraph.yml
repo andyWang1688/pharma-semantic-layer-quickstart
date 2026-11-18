@@ -1,0 +1,58 @@
+# 统一组织关系出口：岗位树关联带人员属性的任职表，保留空岗、多岗和同岗多人。
+# 每行代表一个版本的一对上下级岗位，以及后代岗位的一名任职人员；空岗人员为空。
+cubes:
+  - name: OrganizationGraph
+    public: false
+    sql: |-
+      SELECT t.*, a.employee_code, a.employee_name, a.role_kind,
+        jsonb_build_array(t.snapshot_code, t.ancestor_position_code,
+          t.descendant_position_code, a.employee_code)::text AS relation_key
+      FROM marts.mart_position_tree t
+      LEFT JOIN marts.mart_employee_positions a
+        ON a.snapshot_code=t.snapshot_code AND a.position_code=t.descendant_position_code
+
+    dimensions:
+      - name: relation_key
+        sql: relation_key
+        type: string
+        primary_key: true
+      - name: snapshot_code
+        sql: snapshot_code
+        type: string
+        title: 架构版本
+      - name: ancestor_position_code
+        sql: ancestor_position_code
+        type: string
+        title: 祖先岗位编码
+      - name: ancestor_position_name
+        sql: ancestor_position_name
+        type: string
+        title: 祖先岗位名称
+      - name: position_code
+        sql: descendant_position_code
+        type: string
+        title: 后代岗位编码
+      - name: position_name
+        sql: descendant_position_name
+        type: string
+        title: 后代岗位名称
+      - name: parent_position_code
+        sql: descendant_parent_code
+        type: string
+        title: 后代岗位的直接上级
+      - name: depth
+        sql: depth
+        type: number
+        title: 岗位距离：0自身、1直属
+      - name: person_id
+        sql: employee_code
+        type: string
+        title: 后代岗位任职人工号
+      - name: person_name
+        sql: employee_name
+        type: string
+        title: 后代岗位任职人姓名
+      - name: role_kind
+        sql: role_kind
+        type: string
+        title: 业务人员类型

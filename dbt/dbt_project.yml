@@ -1,0 +1,28 @@
+name: shared_sales
+version: '1.0.0'
+config-version: 2
+profile: shared_sales
+model-paths: [models]
+test-paths: [tests]
+macro-paths: [macros]
+# 编译、文档、日志放进容器临时目录，源码目录保持可 review。
+vars:
+  # 合成场景的固定业务日期；未来版本先装载也不会自动成为当前版本。
+  organization_as_of: '2026-11-17'
+models:
+  shared_sales:
+    +materialized: view
+    staging:
+      +schema: staging
+      +docs:
+        node_color: '#94a3b8'
+    intermediate:
+      +schema: intermediate
+      +docs:
+        node_color: '#f59e0b'
+    marts:
+      +materialized: table
+      +post-hook: 'ANALYZE {{ this }}'
+      +schema: marts
+      +docs:
+        node_color: '#22c55e'

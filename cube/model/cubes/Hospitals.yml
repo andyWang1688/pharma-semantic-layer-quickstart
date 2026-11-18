@@ -1,0 +1,17 @@
+# 医院唯一维度，不含辖区覆盖关系；public: false 只允许从业务 View 引用。
+cubes:
+  - name: Hospitals
+    sql: SELECT * FROM marts.mart_hospital_dimension
+    public: false
+
+    dimensions:
+      - name: hospital_code
+        sql: hospital_code
+        type: string
+        primary_key: true
+      - name: hospital_name
+        sql: hospital_name
+        type: string
+      - name: province_name
+        sql: province_name
+        type: string

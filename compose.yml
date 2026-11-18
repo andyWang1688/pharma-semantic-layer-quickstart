@@ -1,0 +1,125 @@
+# 独立合成环境；示例账号/密钥公开用于 review，只绑定本机端口。
+name: ${COMPOSE_PROJECT_NAME:-shared-hp-example-01a1e32c}
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: example
+      POSTGRES_PASSWORD: example-only
+      POSTGRES_DB: shared_sales
+    # 仅开放本机访问，供 DBeaver、DataGrip 等工具查看合成数据。
+    ports:
+      - "127.0.0.1:${DB_PORT:-32772}:5432"
+    networks:
+      - default
+      - frontend
+    tmpfs:
+      # 临时数据库，无持久化客户数据；重建容器重新执行 db/init。
+      - /var/lib/postgresql/data
+    volumes:
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U example -d shared_sales]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+  dbt:
+    # 一次性转换任务；成功构建与测试后 Cube 才启动。
+    build:
+      context: .
+      dockerfile: docker/Dbt.Dockerfile
+    image: shared-hp-demo-dbt:1.9.10
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGHOST: db
+      PGDATABASE: shared_sales
+      PGUSER: example
+      PGPASSWORD: example-only
+      CUBE_API_URL: http://cube:4000/cubejs-api/v1
+      CUBE_API_SECRET: ${CUBE_API_SECRET:-shared-sales-example-secret}
+      DBT_SEND_ANONYMOUS_USAGE_STATS: 'false'
+      DBT_TARGET_PATH: /tmp/dbt/target
+      DBT_LOG_PATH: /tmp/dbt/logs
+    volumes:
+      - .:/example:ro
+    tmpfs:
+      - /tmp/dbt
+  cube:
+    build:
+      context: .
+      dockerfile: docker/Cube.Dockerfile
+    image: shared-hp-demo-cube:1.7.1
+    depends_on:
+      db:
+        condition: service_healthy
+      dbt:
+        condition: service_completed_successfully
+    environment:
+      NODE_ENV: production
+      CUBEJS_DEV_MODE: "false"
+      CUBEJS_TESSERACT_SQL_PLANNER: "true"
+      CUBEJS_CACHE_AND_QUEUE_DRIVER: memory
+      # 为减少示例服务数使用单进程刷新；生产需另设计刷新 worker/队列。
+      CUBEJS_REFRESH_WORKER: "true"
+      CUBEJS_PRE_AGGREGATIONS_SCHEMA: cube_pre_aggregations
+      CUBEJS_DB_TYPE: postgres
+      CUBEJS_DB_HOST: db
+      CUBEJS_DB_NAME: shared_sales
+      CUBEJS_DB_USER: example
+      CUBEJS_DB_PASS: example-only
+      CUBEJS_API_SECRET: ${CUBE_API_SECRET:-shared-sales-example-secret}
+      CUBEJS_TELEMETRY: "false"
+      CUBEJS_LOG_LEVEL: ${CUBEJS_LOG_LEVEL:-info}
+      # PG* 给 cube.py 内的权限解析器使用；上方 CUBEJS_DB_* 给 Cube SQL 执行器。
+      PGHOST: db
+      PGDATABASE: shared_sales
+      PGUSER: example
+      PGPASSWORD: example-only
+    ports:
+      - "127.0.0.1:${CUBE_PORT:-32771}:4000"
+    networks:
+      - default
+      - frontend
+    volumes:
+      - ./cube:/cube/conf:ro
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://localhost:4000/readyz').then(response => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 2s
+      timeout: 3s
+      retries: 45
+  demo:
+    # 可选页面和工具客户端；停止它不影响有效 JWT 直接查询 Cube。
+    build:
+      context: .
+      dockerfile: docker/Demo.Dockerfile
+    image: shared-hp-demo-client:local
+    depends_on:
+      cube:
+        condition: service_healthy
+    environment:
+      CUBE_API_URL: http://cube:4000/cubejs-api/v1
+      CUBE_API_SECRET: ${CUBE_API_SECRET:-shared-sales-example-secret}
+      PYTHONDONTWRITEBYTECODE: "1"
+      PGHOST: db
+      PGDATABASE: shared_sales
+      PGUSER: example
+      PGPASSWORD: example-only
+    ports:
+      - "127.0.0.1:${DEMO_PORT:-32770}:8080"
+    networks:
+      - default
+      - frontend
+    volumes:
+      - .:/example:ro
+    healthcheck:
+      test: [CMD, python, -c, "from urllib.request import urlopen; urlopen('http://localhost:8080/health', timeout=2)"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+networks:
+  default:
+    # 数据库与服务通过内部网络互通；frontend 使本机端口发布可用。
+    internal: true
+  frontend: {}

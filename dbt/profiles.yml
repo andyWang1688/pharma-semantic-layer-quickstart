@@ -1,0 +1,13 @@
+# 仅包含合成库默认值；外部连接通过环境变量注入。
+shared_sales:
+  target: demo
+  outputs:
+    demo:
+      type: postgres
+      host: "{{ env_var('PGHOST', 'db') }}"
+      port: 5432
+      user: "{{ env_var('PGUSER', 'example') }}"
+      password: "{{ env_var('PGPASSWORD', 'example-only') }}"
+      dbname: "{{ env_var('PGDATABASE', 'shared_sales') }}"
+      schema: marts
+      threads: 2

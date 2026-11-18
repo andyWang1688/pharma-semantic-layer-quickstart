@@ -1,0 +1,25 @@
+# 面向报表/数字员工的销售语义入口；View 复用底层 Cube 的指标和 Rollup。
+# View 本身不自动授予行权限，强制过滤由 cube.py → security/policy.py 加入。
+views:
+  - name: Sales
+    description: 医药销售星型模型的业务入口，提供销售额、销量及医院、产品、地域、时间分析。人员与岗位通过 Organization 识别；多人员范围按事实并集计算，人员明细不可直接相加。
+    meta:
+      ai_context: 默认当前架构；历史模式须明确期间和架构口径。登录身份与被查询人员不同，权限由 Cube 强制执行。
+
+    cubes:
+      # 明确关联路径和公开成员；组织目录与销售事实不做多对多直接拼接。
+      - join_path: SalesFacts
+        includes:
+          - total_amount
+          - total_quantity
+          - sales_date
+          - hospital_code
+          - product_code
+          - month_hospital_product_key
+      - join_path: SalesFacts.Hospitals
+        includes:
+          - hospital_name
+          - province_name
+      - join_path: SalesFacts.Products
+        includes:
+          - product_name

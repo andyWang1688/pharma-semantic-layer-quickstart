@@ -1,0 +1,14 @@
+# 产品唯一维度；本例假定事实与授权产品编码已对齐，不模拟品牌/SKU 转换。
+cubes:
+  - name: Products
+    sql: SELECT * FROM marts.mart_product_dimension
+    public: false
+
+    dimensions:
+      - name: product_code
+        sql: product_code
+        type: string
+        primary_key: true
+      - name: product_name
+        sql: product_name
+        type: string

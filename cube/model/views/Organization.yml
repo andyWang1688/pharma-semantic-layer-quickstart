@@ -1,0 +1,20 @@
+# 数字员工统一查询人员、岗位和上下级；数据权限由 Cube Python 强制执行。
+views:
+  - name: Organization
+    description: 版本化组织关系。depth=0查人员任职；ancestor_position_code加depth=1查直属下级；depth>0查全部下级；position_code加depth>0查上级岗位。
+    meta:
+      ai_context: 先按姓名查询真实person_id，重名需消歧。person_id/person_name对应后代岗位任职人；上级岗位任职者须按返回的上级岗位再查depth=0。历史查询使用organizationSnapshot。目录可见和完整销售授权分别校验。
+
+    cubes:
+      - join_path: OrganizationGraph
+        includes:
+          - snapshot_code
+          - ancestor_position_code
+          - ancestor_position_name
+          - position_code
+          - position_name
+          - parent_position_code
+          - depth
+          - person_id
+          - person_name
+          - role_kind

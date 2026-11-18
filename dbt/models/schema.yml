@@ -1,0 +1,414 @@
+version: 2
+models:
+  - name: stg_positions
+    description: "raw.positions 的字段标准化入口，保持来源粒度。"
+    tests:
+      - unique_combination:
+          columns: [snapshot_code, position_code]
+    columns:
+      - name: snapshot_code
+        description: "完整月架构版本，格式 YYYY-MM；同一版本的组织和覆盖关系一起装载。"
+        tests: [not_null]
+      - name: position_code
+        description: "岗位/辖区编码；编码和架构版本共同标识一份岗位状态。"
+        tests: [not_null]
+      - name: position_name
+        description: "该版本岗位的展示名称。"
+        tests: [not_null]
+      - name: parent_code
+        description: "同版本的直接上级岗位编码；根岗位为空。"
+  - name: stg_employee_positions
+    description: "raw.employee_positions 的字段标准化入口，保持来源粒度。"
+    tests:
+      - unique_combination:
+          columns: [assignment_id]
+    columns:
+      - name: assignment_id
+        description: "来源任职记录 ID；同人兼任不同岗位分别保留。"
+        tests: [not_null]
+      - name: snapshot_code
+        description: "完整月架构版本，格式 YYYY-MM；同一版本的组织和覆盖关系一起装载。"
+        tests: [not_null]
+      - name: employee_code
+        description: "人员工号，唯一识别人员；姓名相同的人员具有不同工号。"
+        tests: [not_null]
+      - name: position_code
+        description: "岗位/辖区编码；编码和架构版本共同标识一份岗位状态。"
+        tests: [not_null]
+  - name: stg_position_accounts
+    description: "raw.position_account_histories 的字段标准化入口，保持来源粒度。"
+    tests:
+      - unique_combination:
+          columns: [id]
+    columns:
+      - name: id
+        description: "来源关系记录 ID。"
+        tests: [not_null]
+      - name: snapshot_code
+        description: "完整月架构版本，格式 YYYY-MM；同一版本的组织和覆盖关系一起装载。"
+        tests: [not_null]
+      - name: position_code
+        description: "岗位/辖区编码；编码和架构版本共同标识一份岗位状态。"
+        tests: [not_null]
+      - name: account_code
+        description: "客户编码；本销售示例只接受医院客户。"
+        tests: [not_null]
+      - name: account_type
+        description: "客户类型；hospital 表示医院。"
+        tests: [not_null]
+  - name: stg_position_products
+    description: "raw.position_product_histories 的字段标准化入口，保持来源粒度。"
+    tests:
+      - unique_combination:
+          columns: [id]
+    columns:
+      - name: id
+        description: "来源关系记录 ID。"
+        tests: [not_null]
+      - name: snapshot_code
+        description: "完整月架构版本，格式 YYYY-MM；同一版本的组织和覆盖关系一起装载。"
+        tests: [not_null]
+      - name: position_code
+        description: "岗位/辖区编码；编码和架构版本共同标识一份岗位状态。"
+        tests: [not_null]
+      - name: product_code
+        description: "产品主档编码；同一产品可被多个岗位覆盖。"
+        tests: [not_null]
+  - name: stg_people
+    description: "raw.employees 的字段标准化入口，保持来源粒度。"
+    tests:
+      - unique_combination:
+          columns: [employee_code]
+    columns:
+      - name: employee_code
+        description: "人员工号，唯一识别人员；姓名相同的人员具有不同工号。"
+        tests: [not_null]
+      - name: employee_name
+        description: "人员展示姓名，允许重名。"
+        tests: [not_null]
+      - name: role_kind
+        description: "示例人员类型；manager 用于识别父岗位上的直接经理。"
+        tests: [not_null]
+  - name: stg_sales
+    description: "raw.sales 的字段标准化入口，保持来源粒度。"
+    tests:
+      - unique_combination:
+          columns: [sales_id]
+    columns:
+      - name: sales_id
+        description: "真实销售交易唯一 ID；金额相同的不同交易分别保留。"
+        tests: [not_null]
+      - name: sales_date
+        description: "销售交易发生日期；staging 统一转换为 timestamp。"
+        tests: [not_null]
+      - name: hospital_code
+        description: "医院主档编码；同一医院可被多个岗位覆盖。"
+        tests: [not_null]
+      - name: product_code
+        description: "产品主档编码；同一产品可被多个岗位覆盖。"
+        tests: [not_null]
+      - name: sales_amount
+        description: "该笔交易的合成销售金额；跨岗位共享可见时仍只保存一份。"
+        tests: [not_null]
+      - name: sales_quantity
+        description: "该笔交易的合成销售数量。"
+        tests: [not_null]
+  - name: stg_hospitals
+    description: "raw.hospitals 的字段标准化入口，保持来源粒度。"
+    tests:
+      - unique_combination:
+          columns: [hospital_code]
+    columns:
+      - name: hospital_code
+        description: "医院主档编码；同一医院可被多个岗位覆盖。"
+        tests: [not_null]
+      - name: hospital_name
+        description: "医院展示名称。"
+        tests: [not_null]
+      - name: province_name
+        description: "医院主档的省级地区名称，独立于销售辖区。"
+        tests: [not_null]
+  - name: stg_products
+    description: "raw.products 的字段标准化入口，保持来源粒度。"
+    tests:
+      - unique_combination:
+          columns: [product_code]
+    columns:
+      - name: product_code
+        description: "产品主档编码；同一产品可被多个岗位覆盖。"
+        tests: [not_null]
+      - name: product_name
+        description: "产品展示名称。"
+        tests: [not_null]
+  - name: int_position_tree
+    description: "构建期展开的同版本岗位祖先/后代闭包。"
+    tests:
+      - unique_combination:
+          columns: [snapshot_code, ancestor_position_code, descendant_position_code]
+    columns:
+      - name: snapshot_code
+        description: "完整月架构版本，格式 YYYY-MM；同一版本的组织和覆盖关系一起装载。"
+        tests: [not_null]
+      - name: ancestor_position_code
+        description: "同版本的祖先岗位；自身也作为祖先。"
+        tests: [not_null]
+      - name: descendant_position_code
+        description: "同版本的后代岗位；自身也作为后代。"
+        tests: [not_null]
+      - name: depth
+        description: "祖先到后代的层级距离；自身为 0。"
+        tests: [not_null]
+      - name: valid_from
+        description: "完整架构版本的生效月初，包含当天。"
+        tests: [not_null]
+      - name: valid_to
+        description: "下一完整版本生效月初，不含当天；最后版本为空。"
+      - name: is_available
+        description: "版本生效月初不晚于 organization_as_of 时为真。"
+        tests: [not_null]
+      - name: is_current
+        description: "按 organization_as_of 选中的最近已生效版本；该版所有树关系为真。"
+        tests: [not_null]
+      - name: ancestor_position_name
+        description: "该版本祖先岗位的展示名称。"
+        tests: [not_null]
+      - name: descendant_position_name
+        description: "该版本后代岗位的展示名称。"
+        tests: [not_null]
+      - name: descendant_parent_code
+        description: "后代岗位在该版本的直接上级岗位，根岗位为空。"
+  - name: int_position_hp
+    description: "同版本同岗位内的唯一医院产品覆盖关系，无销售金额。"
+    tests:
+      - unique_combination:
+          columns: [snapshot_code, position_code, hospital_code, product_code]
+    columns:
+      - name: snapshot_code
+        description: "完整月架构版本，格式 YYYY-MM；同一版本的组织和覆盖关系一起装载。"
+        tests: [not_null]
+      - name: position_code
+        description: "岗位/辖区编码；编码和架构版本共同标识一份岗位状态。"
+        tests: [not_null]
+      - name: hospital_code
+        description: "医院主档编码；同一医院可被多个岗位覆盖。"
+        tests: [not_null]
+      - name: product_code
+        description: "产品主档编码；同一产品可被多个岗位覆盖。"
+        tests: [not_null]
+  - name: int_employee_positions
+    description: "任职记录附带人员姓名、业务类型与同版本自身岗位名称。"
+    tests:
+      - unique_combination:
+          columns: [snapshot_code, employee_code, position_code]
+    columns:
+      - name: assignment_id
+        description: "来源任职记录 ID；同人兼任不同岗位分别保留。"
+        tests: [not_null]
+      - name: snapshot_code
+        description: "完整月架构版本，格式 YYYY-MM；同一版本的组织和覆盖关系一起装载。"
+        tests: [not_null]
+      - name: employee_code
+        description: "人员工号，唯一识别人员；姓名相同的人员具有不同工号。"
+        tests: [not_null]
+      - name: position_code
+        description: "岗位/辖区编码；编码和架构版本共同标识一份岗位状态。"
+        tests: [not_null]
+      - name: position_name
+        description: "该版本岗位的展示名称。"
+        tests: [not_null]
+      - name: employee_name
+        description: "任职人员在源人员主档中的展示姓名，允许重名；当前主档属性。"
+        tests: [not_null]
+      - name: role_kind
+        description: "任职人员在源人员主档中的业务类型；manager用于识别经理，当前主档属性。"
+        tests: [not_null]
+  - name: int_hospitals
+    description: "独立医院主档。"
+    tests:
+      - unique_combination:
+          columns: [hospital_code]
+    columns:
+      - name: hospital_code
+        description: "医院主档编码；同一医院可被多个岗位覆盖。"
+        tests: [not_null]
+      - name: hospital_name
+        description: "医院展示名称。"
+        tests: [not_null]
+      - name: province_name
+        description: "医院主档的省级地区名称，独立于销售辖区。"
+        tests: [not_null]
+  - name: int_products
+    description: "独立产品主档。"
+    tests:
+      - unique_combination:
+          columns: [product_code]
+    columns:
+      - name: product_code
+        description: "产品主档编码；同一产品可被多个岗位覆盖。"
+        tests: [not_null]
+      - name: product_name
+        description: "产品展示名称。"
+        tests: [not_null]
+  - name: int_sales
+    description: "保留交易粒度并计算月份 H+P 权限键。"
+    tests:
+      - unique_combination:
+          columns: [sales_id]
+    columns:
+      - name: sales_id
+        description: "真实销售交易唯一 ID；金额相同的不同交易分别保留。"
+        tests: [not_null]
+      - name: sales_date
+        description: "销售交易发生日期；staging 统一转换为 timestamp。"
+        tests: [not_null]
+      - name: hospital_code
+        description: "医院主档编码；同一医院可被多个岗位覆盖。"
+        tests: [not_null]
+      - name: product_code
+        description: "产品主档编码；同一产品可被多个岗位覆盖。"
+        tests: [not_null]
+      - name: sales_amount
+        description: "该笔交易的合成销售金额；跨岗位共享可见时仍只保存一份。"
+        tests: [not_null]
+      - name: sales_quantity
+        description: "该笔交易的合成销售数量。"
+        tests: [not_null]
+      - name: month_hospital_product_key
+        description: "[销售月份, 医院编码, 产品编码] 的 PostgreSQL JSON 文本；保留时间与 H+P 配对，用于强制过滤。"
+        tests: [not_null]
+  - name: mart_position_tree
+    description: "构建期展开的同版本岗位祖先/后代闭包。 Cube 稳定消费出口。"
+    tests:
+      - unique_combination:
+          columns: [snapshot_code, ancestor_position_code, descendant_position_code]
+    columns:
+      - name: snapshot_code
+        description: "完整月架构版本，格式 YYYY-MM；同一版本的组织和覆盖关系一起装载。"
+        tests: [not_null]
+      - name: ancestor_position_code
+        description: "同版本的祖先岗位；自身也作为祖先。"
+        tests: [not_null]
+      - name: descendant_position_code
+        description: "同版本的后代岗位；自身也作为后代。"
+        tests: [not_null]
+      - name: depth
+        description: "祖先到后代的层级距离；自身为 0。"
+        tests: [not_null]
+      - name: valid_from
+        description: "完整架构版本的生效月初，包含当天。"
+        tests: [not_null]
+      - name: valid_to
+        description: "下一完整版本生效月初，不含当天；最后版本为空。"
+      - name: is_available
+        description: "版本生效月初不晚于 organization_as_of 时为真。"
+        tests: [not_null]
+      - name: is_current
+        description: "按 organization_as_of 选中的最近已生效版本；该版所有树关系为真。"
+        tests: [not_null]
+      - name: ancestor_position_name
+        description: "该版本祖先岗位的展示名称。"
+        tests: [not_null]
+      - name: descendant_position_name
+        description: "该版本后代岗位的展示名称。"
+        tests: [not_null]
+      - name: descendant_parent_code
+        description: "后代岗位在该版本的直接上级岗位，根岗位为空。"
+  - name: mart_position_hp
+    description: "同版本同岗位内的唯一医院产品覆盖关系，无销售金额。 Cube 稳定消费出口。"
+    tests:
+      - unique_combination:
+          columns: [snapshot_code, position_code, hospital_code, product_code]
+    columns:
+      - name: snapshot_code
+        description: "完整月架构版本，格式 YYYY-MM；同一版本的组织和覆盖关系一起装载。"
+        tests: [not_null]
+      - name: position_code
+        description: "岗位/辖区编码；编码和架构版本共同标识一份岗位状态。"
+        tests: [not_null]
+      - name: hospital_code
+        description: "医院主档编码；同一医院可被多个岗位覆盖。"
+        tests: [not_null]
+      - name: product_code
+        description: "产品主档编码；同一产品可被多个岗位覆盖。"
+        tests: [not_null]
+  - name: mart_employee_positions
+    description: "任职记录附带人员姓名、业务类型与同版本自身岗位名称。 Cube 稳定消费出口。"
+    tests:
+      - unique_combination:
+          columns: [snapshot_code, employee_code, position_code]
+    columns:
+      - name: assignment_id
+        description: "来源任职记录 ID；同人兼任不同岗位分别保留。"
+        tests: [not_null]
+      - name: snapshot_code
+        description: "完整月架构版本，格式 YYYY-MM；同一版本的组织和覆盖关系一起装载。"
+        tests: [not_null]
+      - name: employee_code
+        description: "人员工号，唯一识别人员；姓名相同的人员具有不同工号。"
+        tests: [not_null]
+      - name: position_code
+        description: "岗位/辖区编码；编码和架构版本共同标识一份岗位状态。"
+        tests: [not_null]
+      - name: position_name
+        description: "该版本岗位的展示名称。"
+        tests: [not_null]
+      - name: employee_name
+        description: "任职人员在源人员主档中的展示姓名，允许重名；当前主档属性。"
+        tests: [not_null]
+      - name: role_kind
+        description: "任职人员在源人员主档中的业务类型；manager用于识别经理，当前主档属性。"
+        tests: [not_null]
+  - name: mart_hospital_dimension
+    description: "独立医院主档。 Cube 稳定消费出口。"
+    tests:
+      - unique_combination:
+          columns: [hospital_code]
+    columns:
+      - name: hospital_code
+        description: "医院主档编码；同一医院可被多个岗位覆盖。"
+        tests: [not_null]
+      - name: hospital_name
+        description: "医院展示名称。"
+        tests: [not_null]
+      - name: province_name
+        description: "医院主档的省级地区名称，独立于销售辖区。"
+        tests: [not_null]
+  - name: mart_product_dimension
+    description: "独立产品主档。 Cube 稳定消费出口。"
+    tests:
+      - unique_combination:
+          columns: [product_code]
+    columns:
+      - name: product_code
+        description: "产品主档编码；同一产品可被多个岗位覆盖。"
+        tests: [not_null]
+      - name: product_name
+        description: "产品展示名称。"
+        tests: [not_null]
+  - name: mart_sales_fact
+    description: "保留交易粒度并计算月份 H+P 权限键。 Cube 稳定消费出口。"
+    tests:
+      - unique_combination:
+          columns: [sales_id]
+    columns:
+      - name: sales_id
+        description: "真实销售交易唯一 ID；金额相同的不同交易分别保留。"
+        tests: [not_null]
+      - name: sales_date
+        description: "销售交易发生日期；staging 统一转换为 timestamp。"
+        tests: [not_null]
+      - name: hospital_code
+        description: "医院主档编码；同一医院可被多个岗位覆盖。"
+        tests: [not_null]
+      - name: product_code
+        description: "产品主档编码；同一产品可被多个岗位覆盖。"
+        tests: [not_null]
+      - name: sales_amount
+        description: "该笔交易的合成销售金额；跨岗位共享可见时仍只保存一份。"
+        tests: [not_null]
+      - name: sales_quantity
+        description: "该笔交易的合成销售数量。"
+        tests: [not_null]
+      - name: month_hospital_product_key
+        description: "[销售月份, 医院编码, 产品编码] 的 PostgreSQL JSON 文本；保留时间与 H+P 配对，用于强制过滤。"
+        tests: [not_null]

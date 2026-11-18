@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>医药行业 dbt + Cube 语义层 Demo</title>
+  <link rel="stylesheet" href="/static/styles.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+<main>
+  <header class="page-header">
+    <div><p class="eyebrow">医药行业 · dbt + Cube</p><h1>销售分析与人员查询</h1></div>
+    <span class="environment">本地合成数据</span>
+  </header>
+  <nav class="tabs" role="tablist" aria-label="查询方式">
+    <button id="filter-tab" role="tab" aria-selected="true" aria-controls="filter-panel">筛选查询</button>
+    <button id="agent-tab" role="tab" aria-selected="false" aria-controls="agent-panel" tabindex="-1">数字员工</button>
+  </nav>
+
+  <!-- 两种查询方式有独立条件、结果和错误区域，不互相改写选择。 -->
+  <section id="filter-panel" role="tabpanel" aria-labelledby="filter-tab">
+    <div class="section-heading"><h2>筛选查询</h2><p>明确知道查谁时，直接选择对象、时间和范围。</p></div>
+    <form id="filter-form" class="surface">
+      <div class="form-grid">
+        <label>当前登录人<select id="filter-viewer"><option value="M001">王经理</option><option value="E001">张三 · 辖区一</option><option value="E004">无辖区账号</option><option value="E005">停用账号</option></select></label>
+        <label>查询对象<select id="filter-person"><option value="M001">王经理及其团队</option><option value="E001">张三 · 工号 E001</option><option value="E002">李四 · 工号 E002</option><option value="E006">张三 · 工号 E006</option><option value="E001,E002">张三与李四 · 去重合计</option><option value="E003">陈代表 · 兼任两个辖区</option></select></label>
+        <label>销售期间<select id="filter-month"><option value="2026-01">2026 年 1 月</option><option value="2026-02">2026 年 2 月</option><option value="all">2026 年 1—2 月</option></select></label>
+        <label>医院筛选<select id="filter-hospital"><option value="">全部可见医院</option><option value="H1">医院 H1</option><option value="H2">医院 H2</option><option value="H3">医院 H3</option><option value="H4">医院 H4</option></select></label>
+        <label>产品筛选<select id="filter-product"><option value="">全部可见产品</option><option value="P1">产品一</option><option value="P2">产品二</option><option value="P3">产品三</option></select></label>
+        <label>结果分组<select id="filter-group"><option value="detail">按医院、产品</option><option value="product">按产品</option><option value="total">只看总计</option><option value="province">按省份</option></select></label>
+        <label>组织口径<select id="filter-mode"><option value="current">按当前架构</option><option value="period">按各销售月的历史架构</option><option value="as_of">固定一份历史架构</option></select></label>
+        <label id="filter-snapshot-field" hidden>固定架构月份<select id="filter-snapshot"><option value="2026-02">2026 年 2 月</option><option value="2026-01">2026 年 1 月</option><option value="2026-11">2026 年 11 月</option></select></label>
+      </div>
+      <div class="form-footer"><p>登录人决定权限；查询对象决定本次分析谁。</p><button class="primary" type="submit">查询销售额</button></div>
+    </form>
+    <p id="filter-error" class="error" role="alert"></p>
+    <p id="filter-status" class="status-line" role="status"></p>
+    <section id="filter-result" class="surface result" aria-label="筛选查询结果" hidden>
+      <div class="result-heading"><div><p class="eyebrow">销售额</p><p id="filter-total" class="amount"></p></div><p id="filter-summary"></p></div>
+      <div class="table-wrap"><table id="filter-table"><thead></thead><tbody></tbody></table></div>
+      <p class="result-note">结果按所选对象、架构口径和当前授权计算。</p>
+      <details class="execution"><summary>查看权限、预聚合与 SQL</summary><p id="filter-proof"></p><p id="filter-architecture"></p><h3>本次请求与强制权限</h3><pre id="filter-query"></pre><h3>预聚合与生成 SQL</h3><pre id="filter-sql"></pre><h3>原始事实对账 SQL</h3><pre id="filter-raw"></pre></details>
+    </section>
+  </section>
+
+  <section id="agent-panel" role="tabpanel" aria-labelledby="agent-tab" hidden>
+    <div class="section-heading"><h2>数字员工</h2><p>演示“找人 → 确认对象 → 查业绩”的工具流程。此示例未接入大模型。</p></div>
+    <section class="surface">
+      <div class="form-grid">
+        <label>当前登录人<select id="agent-viewer"><option value="M001">王经理</option><option value="E001">张三 · 辖区一</option></select></label>
+        <label>销售期间<select id="agent-month"><option value="2026-01">2026 年 1 月</option><option value="2026-02">2026 年 2 月</option><option value="all">2026 年 1—2 月</option></select></label>
+        <label>组织口径<select id="agent-mode"><option value="current">按当前架构</option><option value="period">按各销售月的历史架构</option><option value="as_of">固定一份历史架构</option></select></label>
+        <label id="agent-snapshot-field" hidden>固定架构月份<select id="agent-snapshot"><option value="2026-02">2026 年 2 月</option><option value="2026-01">2026 年 1 月</option><option value="2026-11">2026 年 11 月</option></select></label>
+      </div>
+      <div class="workflow-section">
+        <h3><span class="step-number">1</span>找到人员</h3>
+        <form id="people-form" class="search-row"><label for="people-name">人员姓名</label><input id="people-name" placeholder="例如：张三" value="张三" required><button type="submit">检索人员</button></form>
+        <p class="hint">姓名相同时，先根据辖区和工号确认。可分别搜索并选择多人。</p>
+        <p id="people-status" role="status"></p>
+        <div id="people-candidates" class="candidate-list"></div>
+      </div>
+      <div class="workflow-section">
+        <h3><span class="step-number">2</span>确认查询对象</h3>
+        <div id="selected-people" class="selected-people"><p class="hint">尚未选择人员。</p></div>
+        <p id="selection-note" class="hint"></p>
+        <div class="actions"><button id="agent-sales" class="primary" disabled>查询所选人员销售额</button><button id="agent-managers" disabled>查询所选人员的直属领导</button></div>
+        <div id="manager-results" class="candidate-list"></div>
+      </div>
+    </section>
+    <p id="agent-error" class="error" role="alert"></p>
+    <p id="agent-status" class="status-line" role="status"></p>
+    <section id="agent-result" class="surface result" aria-label="数字员工查询结果" hidden>
+      <h3><span class="step-number">3</span>查询结果</h3>
+      <div class="result-heading"><div><p class="eyebrow">销售额</p><p id="agent-total" class="amount"></p></div><p id="agent-summary"></p></div>
+      <div class="table-wrap"><table id="agent-table"><thead></thead><tbody></tbody></table></div>
+    </section>
+    <details class="surface tool-details"><summary>查看真实工具调用</summary><pre id="agent-trace">检索人员后，这里显示实际调用参数与结果。</pre></details>
+  </section>
+  <footer>独立示例 · 模拟身份仅用于本机演示 · 历史组织按月快照保存 · 代码已补中文注释</footer>
+</main>
+</body>
+</html>

@@ -1,0 +1,6 @@
+# Cube 内权限读取与可选客户端共用纯 Python 驱动；固定传递依赖以便复现。
+pg8000==1.31.5
+python-dateutil==4.0.0
+scramp==1.5.0
+asn1crypto==1.5.1
+tzdata==2026.6
